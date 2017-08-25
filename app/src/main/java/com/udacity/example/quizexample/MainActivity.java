@@ -18,6 +18,9 @@ package com.udacity.example.quizexample;
 
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -28,6 +31,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.udacity.example.droidtermsprovider.DroidTermsExampleContract;
 
@@ -74,20 +78,38 @@ public class MainActivity extends AppCompatActivity {
         //Run the database operation to get the cursor off of the main thread
         new WordFetchTask().execute();
 
-        exposePopularMovieDbViaContentProvider();
+        boolean hasPackage = isPackageExisted(MainActivity.this, "se.sugarest.jane.popularmovies");
+        Log.i(TAG, "Popular Movies App exist: " + hasPackage);
 
+        if (hasPackage) {
+            exposePopularMovieDbViaContentProvider();
+        }
     }
 
     private void exposePopularMovieDbViaContentProvider() {
-        Uri popularMovieCacheTableContentUrl = Uri.parse("content://se.sugarest.jane.popularmovies/cache_movie_most_popular");
-        ContentProviderClient popularMovieContentProvider = getContentResolver().acquireContentProviderClient(popularMovieCacheTableContentUrl);
+        Uri popularMovieCacheTableContentUri = Uri.parse("content://se.sugarest.jane.popularmovies/cache_movie_most_popular");
+        ContentProviderClient popularMovieContentProvider = getContentResolver().acquireContentProviderClient(popularMovieCacheTableContentUri);
         try {
-            Cursor yourCursor = popularMovieContentProvider.query(popularMovieCacheTableContentUrl, null, null, null, null);
-            int i = yourCursor.getCount();
+            Cursor cursor = popularMovieContentProvider.query(popularMovieCacheTableContentUri, null, null, null, null);
+            int i = cursor.getCount();
             Log.i(TAG, "There are " + i + " items inside popular movies cache table.");
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException: cannot find Popular Movies Content Provider. " + e.getMessage());
+        } catch (NullPointerException e) {
+            Toast.makeText(this, "Please install Popular Movies App first to get data.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    public static boolean isPackageExisted(Context c, String targetPackage) {
+
+        PackageManager pm = c.getPackageManager();
+        try {
+            PackageInfo info = pm.getPackageInfo(targetPackage,
+                    PackageManager.GET_META_DATA);
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+        return true;
     }
 
     /**
